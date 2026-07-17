@@ -253,6 +253,17 @@ model RobotHeartbeat {
   eaVersion             String?
   terminalVersion       String?
   clientTimestamp       DateTime?
+  emaValue              Decimal?    @db.Decimal(18, 8)
+  ema20Value            Decimal?    @db.Decimal(18, 8)
+  ema200Value           Decimal?    @db.Decimal(18, 8)
+  emaM15Value           Decimal?    @db.Decimal(18, 8)
+  rsiValue              Decimal?    @db.Decimal(18, 8)
+  adxValue              Decimal?    @db.Decimal(18, 8)
+  plusDI                Decimal?    @db.Decimal(18, 8)
+  minusDI               Decimal?    @db.Decimal(18, 8)
+  atrValue              Decimal?    @db.Decimal(18, 8)
+  signalScore           Decimal?    @db.Decimal(18, 8)
+  lastSignal            String?
   receivedAt            DateTime    @default(now())
   createdAt             DateTime    @default(now())
 
