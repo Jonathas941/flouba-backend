@@ -29,9 +29,6 @@
     "db:push": "prisma db push",
     "postinstall": "prisma generate"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@prisma/client": "^6.9.0",
     "cors": "^2.8.5",
