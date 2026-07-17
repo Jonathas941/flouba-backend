@@ -12,6 +12,7 @@ export const mt5Router = Router();
 mt5Router.post('/register', mt5RegistrationAuthMiddleware, register);
 mt5Router.use(mt5AuthMiddleware);
 mt5Router.post('/heartbeat', mt5HeartbeatLimiter, mt5.heartbeat);
+mt5Router.post('/indicators', mt5HeartbeatLimiter, mt5.indicators);
 mt5Router.get('/commands', mt5PollLimiter, mt5.pollCommands);
 mt5Router.post('/commands/:commandId/acknowledge', mt5.acknowledge);
 mt5Router.post('/commands/:commandId/executing', mt5.executing);
