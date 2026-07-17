@@ -20,6 +20,17 @@ export const heartbeatSchema = z.object({
   spreadFilterPassed: z.boolean().default(true), riskStatus: z.nativeEnum(RiskStatus).default(RiskStatus.UNKNOWN),
   eaVersion: z.string().max(128).optional(), terminalVersion: z.string().max(128).optional(),
   clientTimestamp: z.coerce.date().optional(),
+  emaValue: number.optional(),
+  ema20Value: number.optional(),
+  ema200Value: number.optional(),
+  emaM15Value: number.optional(),
+  rsiValue: number.optional(),
+  adxValue: number.optional(),
+  plusDI: number.optional(),
+  minusDI: number.optional(),
+  atrValue: number.optional(),
+  signalScore: number.optional(),
+  lastSignal: z.string().max(64).optional(),
 });
 export type HeartbeatInput = z.infer<typeof heartbeatSchema>;
 export const parseHeartbeat = (input: unknown): HeartbeatInput => heartbeatSchema.parse(input);

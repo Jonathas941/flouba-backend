@@ -22,6 +22,7 @@ base44Router.get('/robots/:robotId/trades', base44.trades);
 base44Router.get('/robots/:robotId/commands', base44.commands);
 base44Router.get('/robots/:robotId/logs', base44.logs);
 base44Router.get('/robots/:robotId/settings', base44.settings);
+base44Router.get('/robots/:robotId/indicators', base44.indicators);
 base44Router.post('/robots/:robotId/commands', commandCreateLimiter, create);
 base44Router.post('/robots/:robotId/start', base44.control(CommandType.START_ROBOT));
 base44Router.post('/robots/:robotId/stop', base44.control(CommandType.STOP_ROBOT));
