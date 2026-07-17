@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../config/database.js';
+import { createRobot } from '../controllers/robot.controller.js';
 import { list, getStatus } from '../controllers/webhook.controller.js';
 import { runDailyStatisticsJob } from '../jobs/daily-statistics.job.js';
 import { runExpiredCommandJob } from '../jobs/expired-command.job.js';
@@ -57,6 +58,8 @@ internalRouter.get(
     ),
   ),
 );
+
+internalRouter.post('/robots', createRobot);
 
 internalRouter.get('/webhooks', list);
 internalRouter.get('/webhooks/:webhookId', getStatus);
