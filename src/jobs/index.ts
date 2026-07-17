@@ -15,20 +15,11 @@ async function acquireLock(jobName: string): Promise<boolean> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + getEnv().JOB_INTERVAL_SECONDS * 2000);
 
-  const refreshed = await prisma.jobLock.updateMany({
-    where: {
-      jobName,
-      OR: [{ expiresAt: { lt: now } }, { lockedBy: owner }],
-    },
-    data: { lockedBy: owner, lockedAt: now, expiresAt },
-  });
-  if (refreshed.count > 0) {
-    return true;
-  }
-
   try {
-    await prisma.jobLock.create({
-      data: { jobName, lockedBy: owner, lockedAt: now, expiresAt },
+    await prisma.jobLock.upsert({
+      where: { jobName },
+      create: { jobName, lockedBy: owner, lockedAt: now, expiresAt },
+      update: { lockedBy: owner, lockedAt: now, expiresAt },
     });
     return true;
   } catch (error) {
@@ -51,7 +42,14 @@ async function locked(name: string, fn: () => Promise<unknown>): Promise<void> {
   }
 }
 
-export function startJobs(): void {
+export async function startJobs(): Promise<void> {
+  // Clean up expired locks from previous runs
+  await prisma.jobLock.deleteMany({
+    where: {
+      expiresAt: { lt: new Date() },
+    },
+  });
+
   const interval = getEnv().JOB_INTERVAL_SECONDS * 1000;
   const jobs: Array<[string, () => Promise<unknown>]> = [
     ['robot-offline', runRobotOfflineJob],

@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   const app = createApp();
   await connectDatabase();
   logger.info({ version: env.APP_VERSION, env: env.NODE_ENV }, 'Application starting');
-  startJobs();
+  await startJobs();
   const server = createServer(app);
   createSocketServer(server);
   const shutdown = async (signal: string): Promise<void> => {
