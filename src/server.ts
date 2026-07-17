@@ -27,7 +27,8 @@ async function main(): Promise<void> {
   };
   process.once('SIGTERM', () => void shutdown('SIGTERM'));
   process.once('SIGINT', () => void shutdown('SIGINT'));
-  server.listen(env.PORT, () => logger.info({ port: env.PORT }, 'Server listening'));
+  // Railway (and most PaaS) require binding on 0.0.0.0, not localhost.
+  server.listen(env.PORT, '0.0.0.0', () => logger.info({ port: env.PORT }, 'Server listening'));
 }
 
 void main().catch((error: unknown) => {
