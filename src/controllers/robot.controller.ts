@@ -17,3 +17,10 @@ export const register = asyncHandler(async (req, res) => {
   return successResponse(res, robot, 201);
 });
 export const getById = asyncHandler(async (req, res) => successResponse(res, await getRobot(req.params.robotId)));
+
+export const createRobot = asyncHandler(async (req, res) => {
+  const parsed = parseRobotRegistration(req.body);
+  const { robotId, timestamp: _timestamp, ...data } = parsed;
+  const robot = await registerRobot(robotId, data);
+  return successResponse(res, robot, 201);
+});
