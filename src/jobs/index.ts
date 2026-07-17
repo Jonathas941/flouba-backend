@@ -59,9 +59,15 @@ export async function startJobs(): Promise<void> {
     ['log-cleanup', runLogCleanupJob],
   ];
   for (const [name, job] of jobs) {
-    void locked(name, job);
-    setInterval(() => {
-      void locked(name, job);
-    }, interval).unref();
+    const run = (): void => {
+      locked(name, job).catch((error: unknown) => {
+        getLogger().error({ err: error, job: name }, 'Unhandled error in background job');
+      });
+    };
+    // Defer the first invocation until after the current tick so the server
+    // has a chance to finish starting up (bind to the port, pass health
+    // checks, etc.) before any job work begins.
+    setImmediate(run);
+    setInterval(run, interval).unref();
   }
 }
