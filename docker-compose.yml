@@ -1,0 +1,36 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://flouba:flouba@postgres:5432/flouba_lite?schema=public
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:8080/health/live', (response) => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: flouba_lite
+      POSTGRES_USER: flouba
+      POSTGRES_PASSWORD: flouba
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flouba -d flouba_lite"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:

@@ -1,0 +1,22 @@
+import { Router } from 'express';
+import { sync as syncAccount } from '../controllers/account.controller.js';
+import * as mt5 from '../controllers/mt5.controller.js';
+import { sync as syncOrders } from '../controllers/order.controller.js';
+import { sync as syncPositions } from '../controllers/position.controller.js';
+import { register } from '../controllers/robot.controller.js';
+import { sync as syncTrades } from '../controllers/trade.controller.js';
+import { mt5AuthMiddleware, mt5RegistrationAuthMiddleware } from '../middleware/mt5-auth.middleware.js';
+import { mt5HeartbeatLimiter, mt5PollLimiter } from '../middleware/rate-limit.middleware.js';
+
+export const mt5Router = Router();
+mt5Router.post('/register', mt5RegistrationAuthMiddleware, register);
+mt5Router.use(mt5AuthMiddleware);
+mt5Router.post('/heartbeat', mt5HeartbeatLimiter, mt5.heartbeat);
+mt5Router.get('/commands', mt5PollLimiter, mt5.pollCommands);
+mt5Router.post('/commands/:commandId/acknowledge', mt5.acknowledge);
+mt5Router.post('/commands/:commandId/executing', mt5.executing);
+mt5Router.post('/commands/:commandId/result', mt5.result);
+mt5Router.post('/account/sync', syncAccount);
+mt5Router.post('/positions/sync', syncPositions);
+mt5Router.post('/orders/sync', syncOrders);
+mt5Router.post('/trades/sync', syncTrades);

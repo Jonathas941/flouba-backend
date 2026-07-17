@@ -1,0 +1,708 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RobotStatus {
+  REGISTERING
+  ONLINE
+  OFFLINE
+  PAUSED
+  STOPPED
+  ERROR
+  EMERGENCY_STOPPED
+  DISCONNECTED
+}
+
+enum AccountType {
+  DEMO
+  REAL
+  CONTEST
+  UNKNOWN
+}
+
+enum CommandType {
+  OPEN_BUY
+  OPEN_SELL
+  PLACE_BUY_LIMIT
+  PLACE_SELL_LIMIT
+  PLACE_BUY_STOP
+  PLACE_SELL_STOP
+  MODIFY_POSITION
+  MODIFY_PENDING_ORDER
+  CLOSE_POSITION
+  CLOSE_PARTIAL
+  CLOSE_ALL_POSITIONS
+  CANCEL_PENDING_ORDER
+  CANCEL_ALL_PENDING_ORDERS
+  MOVE_TO_BREAKEVEN
+  ENABLE_TRAILING_STOP
+  DISABLE_TRAILING_STOP
+  START_ROBOT
+  STOP_ROBOT
+  PAUSE_ROBOT
+  RESUME_ROBOT
+  EMERGENCY_STOP
+  CLEAR_EMERGENCY_STOP
+  UPDATE_ROBOT_SETTINGS
+  SYNC_ACCOUNT
+  SYNC_POSITIONS
+  SYNC_ORDERS
+  SYNC_TRADES
+}
+
+enum CommandStatus {
+  QUEUED
+  VALIDATING
+  REJECTED
+  DELIVERED
+  ACKNOWLEDGED
+  EXECUTING
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum CommandPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum TradeDirection {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  BUY_LIMIT
+  SELL_LIMIT
+  BUY_STOP
+  SELL_STOP
+  BUY_STOP_LIMIT
+  SELL_STOP_LIMIT
+}
+
+enum PositionStatus {
+  OPEN
+  CLOSED
+  STALE
+}
+
+enum PendingOrderStatus {
+  PENDING
+  FILLED
+  CANCELLED
+  EXPIRED
+  STALE
+}
+
+enum RiskStatus {
+  OK
+  WARNING
+  BLOCKED
+  UNKNOWN
+}
+
+enum SecurityEventSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  READ
+  AUTH
+  COMMAND
+  SYNC
+  EMERGENCY
+  SETTINGS
+  SYSTEM
+}
+
+model Robot {
+  id                    String       @id @default(cuid())
+  robotId               String       @unique
+  robotName             String
+  accountLogin          String
+  brokerName            String?
+  brokerServer          String?
+  accountCurrency       String?      @default("USD")
+  accountLeverage       Int?
+  accountType           AccountType  @default(UNKNOWN)
+  eaVersion             String?
+  terminalVersion       String?
+  operatingSystem       String?
+  vpsIdentifier         String?
+  supportedSymbols      String[]     @default([])
+  supportedTimeframes   String[]     @default([])
+  magicNumber           Int?
+  autoTradingEnabled    Boolean      @default(false)
+  terminalConnected     Boolean      @default(false)
+  brokerConnected       Boolean      @default(false)
+  marketConnected       Boolean      @default(false)
+  status                RobotStatus  @default(REGISTERING)
+  emergencyStopActive   Boolean      @default(false)
+  emergencyStopAt       DateTime?
+  emergencyStopBy       String?
+  robotTokenHash        String?
+  lastHeartbeatAt       DateTime?
+  lastSeenAt            DateTime?
+  registeredAt          DateTime     @default(now())
+  deletedAt             DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  tradingAccount        TradingAccount?
+  settings              RobotSettings?
+  settingsHistory       RobotSettingsHistory[]
+  heartbeats            RobotHeartbeat[]
+  commands              TradeCommand[]
+  positions             OpenPosition[]
+  orders                PendingOrder[]
+  trades                ClosedTrade[]
+  executions            TradeExecution[]
+  dailyStatistics       DailyAccountStatistic[]
+  logs                  RobotLog[]
+  riskRules             RiskRule[]
+
+  @@index([accountLogin])
+  @@index([status])
+  @@index([lastHeartbeatAt])
+  @@index([emergencyStopActive])
+  @@index([createdAt])
+}
+
+model TradingAccount {
+  id                  String   @id @default(cuid())
+  robotId             String   @unique
+  accountLogin        String
+  brokerName          String?
+  brokerServer        String?
+  accountCurrency     String?  @default("USD")
+  leverage            Int?
+  accountType         AccountType @default(UNKNOWN)
+  balance             Decimal  @default(0) @db.Decimal(18, 8)
+  equity              Decimal  @default(0) @db.Decimal(18, 8)
+  margin              Decimal  @default(0) @db.Decimal(18, 8)
+  freeMargin          Decimal  @default(0) @db.Decimal(18, 8)
+  marginLevel         Decimal  @default(0) @db.Decimal(18, 8)
+  floatingProfit      Decimal  @default(0) @db.Decimal(18, 8)
+  dailyProfit         Decimal  @default(0) @db.Decimal(18, 8)
+  dailyLoss           Decimal  @default(0) @db.Decimal(18, 8)
+  dailyNetProfit      Decimal  @default(0) @db.Decimal(18, 8)
+  drawdownPercent     Decimal  @default(0) @db.Decimal(18, 8)
+  maxDrawdownPercent  Decimal  @default(0) @db.Decimal(18, 8)
+  autoTradingEnabled  Boolean  @default(false)
+  terminalConnected   Boolean  @default(false)
+  brokerConnected     Boolean  @default(false)
+  enabled             Boolean  @default(true)
+  lastSyncedAt        DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  robot               Robot    @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@unique([accountLogin, brokerServer])
+  @@index([accountLogin])
+  @@index([lastSyncedAt])
+}
+
+model RobotHeartbeat {
+  id                    String      @id @default(cuid())
+  robotId               String
+  accountLogin          String
+  robotStatus           RobotStatus
+  autoTradingEnabled    Boolean     @default(false)
+  terminalConnected     Boolean     @default(false)
+  brokerConnected       Boolean     @default(false)
+  marketConnected       Boolean     @default(false)
+  lastTickTime          DateTime?
+  lastTradeTime         DateTime?
+  lastCommandTime       DateTime?
+  balance               Decimal     @default(0) @db.Decimal(18, 8)
+  equity                Decimal     @default(0) @db.Decimal(18, 8)
+  margin                Decimal     @default(0) @db.Decimal(18, 8)
+  freeMargin            Decimal     @default(0) @db.Decimal(18, 8)
+  marginLevel           Decimal     @default(0) @db.Decimal(18, 8)
+  floatingProfit        Decimal     @default(0) @db.Decimal(18, 8)
+  dailyProfit           Decimal     @default(0) @db.Decimal(18, 8)
+  dailyLoss             Decimal     @default(0) @db.Decimal(18, 8)
+  dailyNetProfit        Decimal     @default(0) @db.Decimal(18, 8)
+  drawdownPercent       Decimal     @default(0) @db.Decimal(18, 8)
+  maxDrawdownPercent    Decimal     @default(0) @db.Decimal(18, 8)
+  openPositionCount     Int         @default(0)
+  pendingOrderCount     Int         @default(0)
+  currentSpread         Decimal?    @db.Decimal(18, 8)
+  averageSpread         Decimal?    @db.Decimal(18, 8)
+  currentSymbol         String?
+  tradingSession        String?
+  sessionAllowed        Boolean     @default(true)
+  newsFilterActive      Boolean     @default(false)
+  spreadFilterPassed    Boolean     @default(true)
+  riskStatus            RiskStatus  @default(UNKNOWN)
+  eaVersion             String?
+  terminalVersion       String?
+  clientTimestamp       DateTime?
+  receivedAt            DateTime    @default(now())
+  createdAt             DateTime    @default(now())
+
+  robot                 Robot       @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@index([robotId, receivedAt])
+  @@index([accountLogin])
+  @@index([receivedAt])
+  @@index([robotStatus])
+}
+
+model RobotSettings {
+  id                          String   @id @default(cuid())
+  robotId                     String   @unique
+  autoTradingEnabled          Boolean  @default(false)
+  allowedSymbols              String[] @default([])
+  blockedSymbols              String[] @default([])
+  maximumLotSize              Decimal  @default(1.0) @db.Decimal(18, 8)
+  minimumLotSize              Decimal  @default(0.01) @db.Decimal(18, 8)
+  defaultRiskPercent          Decimal  @default(1.0) @db.Decimal(18, 8)
+  maximumRiskPercent          Decimal  @default(2.0) @db.Decimal(18, 8)
+  maximumOpenPositions        Int      @default(10)
+  maximumPositionsPerSymbol   Int      @default(3)
+  maximumDailyLossAmount      Decimal? @db.Decimal(18, 8)
+  maximumDailyLossPercent     Decimal  @default(5.0) @db.Decimal(18, 8)
+  dailyProfitTargetAmount     Decimal? @db.Decimal(18, 8)
+  dailyProfitTargetPercent    Decimal? @db.Decimal(18, 8)
+  maximumDrawdownPercent      Decimal  @default(10.0) @db.Decimal(18, 8)
+  minimumFreeMargin           Decimal  @default(100) @db.Decimal(18, 8)
+  minimumMarginLevel          Decimal  @default(150) @db.Decimal(18, 8)
+  maximumSpreadPoints         Decimal? @db.Decimal(18, 8)
+  requireStopLoss             Boolean  @default(true)
+  minimumRewardRiskRatio      Decimal? @db.Decimal(18, 8)
+  allowedTradingSessions      String[] @default([])
+  newsFilterEnabled           Boolean  @default(false)
+  trailingStopEnabled         Boolean  @default(false)
+  breakEvenEnabled            Boolean  @default(false)
+  partialCloseEnabled         Boolean  @default(false)
+  emergencyStopActive         Boolean  @default(false)
+  commandExpirationSeconds    Int      @default(300)
+  heartbeatTimeoutSeconds     Int      @default(30)
+  martingaleEnabled           Boolean  @default(false)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  robot                       Robot    @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+}
+
+model RobotSettingsHistory {
+  id          String   @id @default(cuid())
+  robotId     String
+  changedBy   String?
+  changeSource String
+  previousValues Json
+  newValues   Json
+  createdAt   DateTime @default(now())
+
+  robot       Robot    @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@index([robotId, createdAt])
+}
+
+model TradeCommand {
+  id                        String          @id @default(cuid())
+  commandId                 String          @unique @default(cuid())
+  idempotencyKey            String?
+  robotId                   String
+  tradingAccountId          String?
+  accountLogin              String
+  commandType               CommandType
+  symbol                    String?
+  direction                 TradeDirection?
+  lotSize                   Decimal?        @db.Decimal(18, 8)
+  riskPercent               Decimal?        @db.Decimal(18, 8)
+  entryPrice                Decimal?        @db.Decimal(18, 8)
+  stopLoss                  Decimal?        @db.Decimal(18, 8)
+  takeProfit                Decimal?        @db.Decimal(18, 8)
+  trailingStopPoints        Decimal?        @db.Decimal(18, 8)
+  breakEvenTriggerPoints    Decimal?        @db.Decimal(18, 8)
+  partialClosePercent       Decimal?        @db.Decimal(18, 8)
+  brokerTicket              String?
+  brokerPositionId          String?
+  brokerOrderId             String?
+  magicNumber               Int?
+  comment                   String?
+  metadata                  Json?
+  priority                  CommandPriority @default(NORMAL)
+  status                    CommandStatus   @default(QUEUED)
+  retryCount                Int             @default(0)
+  maximumRetryCount         Int             @default(3)
+  rejectionCode             String?
+  rejectionReason           String?
+  expiresAt                 DateTime?
+  deliveredAt               DateTime?
+  acknowledgedAt            DateTime?
+  executionStartedAt        DateTime?
+  completedAt               DateTime?
+  failedAt                  DateTime?
+  cancelledAt               DateTime?
+  deliveryOwner             String?
+  createdBy                 String?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  robot                     Robot           @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+  statusHistory             TradeCommandStatusHistory[]
+  execution                 TradeExecution?
+
+  @@unique([robotId, idempotencyKey])
+  @@index([robotId, status])
+  @@index([commandType])
+  @@index([status, priority, createdAt])
+  @@index([accountLogin])
+  @@index([idempotencyKey])
+  @@index([expiresAt])
+  @@index([brokerTicket])
+  @@index([brokerPositionId])
+  @@index([brokerOrderId])
+  @@index([createdAt])
+  @@index([symbol])
+}
+
+model TradeCommandStatusHistory {
+  id          String         @id @default(cuid())
+  commandId   String
+  fromStatus  CommandStatus?
+  toStatus    CommandStatus
+  message     String?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+
+  command     TradeCommand   @relation(fields: [commandId], references: [commandId], onDelete: Cascade)
+
+  @@index([commandId, createdAt])
+  @@index([toStatus])
+}
+
+model TradeExecution {
+  id                    String   @id @default(cuid())
+  commandId             String   @unique
+  robotId               String
+  success               Boolean
+  brokerOrderId         String?
+  brokerPositionId      String?
+  brokerTicket          String?
+  symbol                String?
+  direction             TradeDirection?
+  requestedLot          Decimal? @db.Decimal(18, 8)
+  executedLot           Decimal? @db.Decimal(18, 8)
+  requestedPrice        Decimal? @db.Decimal(18, 8)
+  executedPrice         Decimal? @db.Decimal(18, 8)
+  stopLoss              Decimal? @db.Decimal(18, 8)
+  takeProfit            Decimal? @db.Decimal(18, 8)
+  spread                Decimal? @db.Decimal(18, 8)
+  slippage              Decimal? @db.Decimal(18, 8)
+  commission            Decimal? @db.Decimal(18, 8)
+  swap                  Decimal? @db.Decimal(18, 8)
+  brokerReturnCode      Int?
+  brokerMessage         String?
+  executionDurationMs   Int?
+  errorCode             String?
+  errorMessage          String?
+  terminalTimestamp     DateTime?
+  clientTimestamp       DateTime?
+  processedAt           DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  command               TradeCommand @relation(fields: [commandId], references: [commandId], onDelete: Cascade)
+  robot                 Robot        @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@index([robotId])
+  @@index([brokerTicket])
+  @@index([brokerPositionId])
+  @@index([brokerOrderId])
+  @@index([createdAt])
+}
+
+model OpenPosition {
+  id                String         @id @default(cuid())
+  robotId           String
+  accountLogin      String
+  brokerPositionId  String
+  brokerTicket      String?
+  symbol            String
+  direction         TradeDirection
+  volume            Decimal        @db.Decimal(18, 8)
+  openPrice         Decimal        @db.Decimal(18, 8)
+  currentPrice      Decimal?       @db.Decimal(18, 8)
+  stopLoss          Decimal?       @db.Decimal(18, 8)
+  takeProfit        Decimal?       @db.Decimal(18, 8)
+  profit            Decimal        @default(0) @db.Decimal(18, 8)
+  swap              Decimal        @default(0) @db.Decimal(18, 8)
+  commission        Decimal        @default(0) @db.Decimal(18, 8)
+  magicNumber       Int?
+  comment           String?
+  status            PositionStatus @default(OPEN)
+  openedAt          DateTime?
+  lastSyncedAt      DateTime       @default(now())
+  closedAt          DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  robot             Robot          @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@unique([robotId, brokerPositionId])
+  @@index([robotId, status])
+  @@index([accountLogin])
+  @@index([symbol])
+  @@index([brokerTicket])
+  @@index([openedAt])
+}
+
+model PendingOrder {
+  id                String             @id @default(cuid())
+  robotId           String
+  accountLogin      String
+  brokerOrderId     String
+  brokerTicket      String?
+  symbol            String
+  orderType         OrderType
+  volume            Decimal            @db.Decimal(18, 8)
+  requestedPrice    Decimal            @db.Decimal(18, 8)
+  stopLoss          Decimal?           @db.Decimal(18, 8)
+  takeProfit        Decimal?           @db.Decimal(18, 8)
+  expiration        DateTime?
+  magicNumber       Int?
+  comment           String?
+  status            PendingOrderStatus @default(PENDING)
+  orderCreatedAt    DateTime?
+  lastSyncedAt      DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  robot             Robot              @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@unique([robotId, brokerOrderId])
+  @@index([robotId, status])
+  @@index([accountLogin])
+  @@index([symbol])
+  @@index([brokerTicket])
+  @@index([orderType])
+}
+
+model ClosedTrade {
+  id                String         @id @default(cuid())
+  robotId           String
+  accountLogin      String
+  brokerDealId      String
+  brokerPositionId  String?
+  brokerTicket      String?
+  symbol            String
+  direction         TradeDirection
+  volume            Decimal        @db.Decimal(18, 8)
+  openPrice         Decimal        @db.Decimal(18, 8)
+  closePrice        Decimal        @db.Decimal(18, 8)
+  stopLoss          Decimal?       @db.Decimal(18, 8)
+  takeProfit        Decimal?       @db.Decimal(18, 8)
+  grossProfit       Decimal        @default(0) @db.Decimal(18, 8)
+  commission        Decimal        @default(0) @db.Decimal(18, 8)
+  swap              Decimal        @default(0) @db.Decimal(18, 8)
+  netProfit         Decimal        @default(0) @db.Decimal(18, 8)
+  magicNumber       Int?
+  comment           String?
+  closeReason       String?
+  openedAt          DateTime?
+  closedAt          DateTime
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  robot             Robot          @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@unique([robotId, brokerDealId])
+  @@index([robotId, closedAt])
+  @@index([accountLogin])
+  @@index([symbol])
+  @@index([brokerTicket])
+  @@index([brokerPositionId])
+  @@index([closedAt])
+}
+
+model DailyAccountStatistic {
+  id                  String   @id @default(cuid())
+  robotId             String
+  accountLogin        String
+  statisticDate       DateTime @db.Date
+  startingBalance     Decimal  @default(0) @db.Decimal(18, 8)
+  endingBalance       Decimal  @default(0) @db.Decimal(18, 8)
+  startingEquity      Decimal  @default(0) @db.Decimal(18, 8)
+  endingEquity        Decimal  @default(0) @db.Decimal(18, 8)
+  dailyProfit         Decimal  @default(0) @db.Decimal(18, 8)
+  dailyLoss           Decimal  @default(0) @db.Decimal(18, 8)
+  dailyNetProfit      Decimal  @default(0) @db.Decimal(18, 8)
+  maxDrawdownPercent  Decimal  @default(0) @db.Decimal(18, 8)
+  tradesClosed        Int      @default(0)
+  positionsOpened     Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  robot               Robot    @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@unique([robotId, statisticDate])
+  @@index([accountLogin, statisticDate])
+  @@index([statisticDate])
+}
+
+model RiskRule {
+  id          String   @id @default(cuid())
+  robotId     String?
+  code        String
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+  isTemplate  Boolean  @default(false)
+  config      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  robot       Robot?   @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@unique([robotId, code])
+  @@index([code])
+  @@index([isTemplate])
+}
+
+model RobotLog {
+  id          String   @id @default(cuid())
+  robotId     String
+  level       String
+  category    String?
+  message     String
+  metadata    Json?
+  commandId   String?
+  createdAt   DateTime @default(now())
+
+  robot       Robot    @relation(fields: [robotId], references: [robotId], onDelete: Cascade)
+
+  @@index([robotId, createdAt])
+  @@index([level])
+  @@index([commandId])
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  action        AuditAction
+  actorType     String
+  actorId       String?
+  robotId       String?
+  accountLogin  String?
+  commandId     String?
+  resourceType  String?
+  resourceId    String?
+  message       String
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  requestId     String?
+  createdAt     DateTime    @default(now())
+
+  @@index([robotId, createdAt])
+  @@index([action])
+  @@index([actorType])
+  @@index([commandId])
+  @@index([createdAt])
+  @@index([requestId])
+}
+
+model SecurityEvent {
+  id          String                @id @default(cuid())
+  eventType   String
+  severity    SecurityEventSeverity @default(WARNING)
+  message     String
+  actorType   String?
+  actorId     String?
+  robotId     String?
+  ipAddress   String?
+  userAgent   String?
+  requestId   String?
+  metadata    Json?
+  createdAt   DateTime              @default(now())
+
+  @@index([eventType])
+  @@index([severity])
+  @@index([robotId])
+  @@index([createdAt])
+  @@index([requestId])
+}
+
+model ApiRequestLog {
+  id            String   @id @default(cuid())
+  requestId     String
+  method        String
+  path          String
+  statusCode    Int?
+  durationMs    Int?
+  robotId       String?
+  accountLogin  String?
+  commandId     String?
+  actorType     String?
+  ipAddress     String?
+  userAgent     String?
+  errorCode     String?
+  createdAt     DateTime @default(now())
+
+  @@index([requestId])
+  @@index([createdAt])
+  @@index([robotId])
+  @@index([path])
+  @@index([statusCode])
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(cuid())
+  idempotencyKey String
+  scope          String
+  requestHash    String?
+  responseStatus Int?
+  responseBody   Json?
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([scope, idempotencyKey])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  eventType   String
+  payload     Json
+  targetUrl   String?
+  status      String   @default("PENDING")
+  attempts    Int      @default(0)
+  lastError   String?
+  deliveredAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model JobLock {
+  id          String   @id @default(cuid())
+  jobName     String   @unique
+  lockedBy    String
+  lockedAt    DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
