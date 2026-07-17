@@ -5,7 +5,7 @@ const number = z.coerce.number().finite();
 export const positionSchema = z.object({
   brokerPositionId: z.string().min(1).max(128), brokerTicket: z.string().max(128).optional(),
   symbol: z.string().min(1).max(64), direction: z.nativeEnum(TradeDirection), volume: number.positive(),
-  openPrice: number.positive(), currentPrice: number.optional(), stopLoss: number.optional(), takeProfit: number.optional(),
+  openPrice: number.positive(), currentPrice: number.optional(), stopLoss: number.optional().nullable(), takeProfit: number.optional().nullable(),
   profit: number.default(0), swap: number.default(0), commission: number.default(0), magicNumber: z.coerce.number().int().optional(),
   comment: z.string().max(1024).optional(), status: z.nativeEnum(PositionStatus).default(PositionStatus.OPEN),
   openedAt: z.coerce.date().optional(), closedAt: z.coerce.date().optional(),
