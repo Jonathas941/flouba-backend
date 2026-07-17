@@ -6,6 +6,7 @@ import { getAccount } from '../services/account.service.js';
 import { cancelAll, closeAll, createCommand, listCommands, pauseRobot, resumeRobot, startRobot, stopRobot } from '../services/command.service.js';
 import { listOrders } from '../services/order.service.js';
 import { listPositions } from '../services/position.service.js';
+import { getLatestIndicators } from '../services/indicators.service.js';
 import { getRobot, getRobotStatus, listRobots } from '../services/robot.service.js';
 import { getSettings } from '../services/settings.service.js';
 import { listTrades } from '../services/trade.service.js';
@@ -21,6 +22,7 @@ export const trades = asyncHandler(async (req, res) => successResponse(res, awai
 export const commands = asyncHandler(async (req, res) => successResponse(res, await listCommands(req.params.robotId, page(req.query))));
 export const logs = asyncHandler(async (req, res) => successResponse(res, await prisma.robotLog.findMany({ where: { robotId: req.params.robotId }, orderBy: { createdAt: 'desc' }, ...page(req.query) })));
 export const settings = asyncHandler(async (req, res) => successResponse(res, await getSettings(req.params.robotId)));
+export const indicators = asyncHandler(async (req, res) => successResponse(res, await getLatestIndicators(req.params.robotId)));
 export const robot = asyncHandler(async (req, res) => successResponse(res, await getRobot(req.params.robotId)));
 export const status = asyncHandler(async (req, res) => successResponse(res, await getRobotStatus(req.params.robotId)));
 
