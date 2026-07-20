@@ -64,8 +64,8 @@ const LOWERCASE_ALIAS_MAP = new Map<string, string>(
 
 /**
  * Normalizes a raw MT5 EA heartbeat payload by mapping known field aliases to
- * their canonical names. Unknown fields are preserved as-is so downstream
- * validation can decide whether to accept or reject them.
+ * their canonical names. Unknown fields (e.g. "E-Stop") are stripped from the
+ * output so that downstream validation only ever sees canonical fields.
  *
  * This function never logs field values (e.g. balance) - only the field
  * names that were remapped, to avoid leaking account data into logs.
@@ -86,9 +86,9 @@ export function normalizeHeartbeatPayload(raw: unknown): Record<string, unknown>
       if (canonical !== key) {
         appliedAliases.push(`${key}->${canonical}`);
       }
-    } else {
-      normalized[key] = value;
     }
+    // Unknown fields (e.g. "E-Stop") are intentionally dropped here so the
+    // heartbeat validator only ever receives known/canonical fields.
   }
 
   if (appliedAliases.length > 0) {
